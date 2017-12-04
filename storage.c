@@ -1,25 +1,42 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "storage.h"
+#include "nufs.h"
 
-typedef struct file_data {
-    const char* path;
-    int         mode;
-    const char* data;
-} file_data;
+const int num_pages = 256;
 
-static file_data file_table[] = {
-    {"/", 040755, 0},
-    {"/hello.txt", 0100644, "hello\n"},
-    {0, 0, 0},
-};
+static file_data file_table[30];
 
 void
 storage_init(const char* path)
 {
-    printf("TODO: Store file system data in: %s\n", path);
+	int pages_fd = open(path, O_CREAT | O_RDWR, 0644);
+	void* the_mafia = mmap(0, 1024 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, pages_fd, 0);
+
+    struct jefe* don = (jefe*)the_mafia;
+	don->bitmap_inode = (int**)(the_mafia + sizeof(jefe));
+	don->bitmap_data = (sizeof(int) * num_pages) + (void*)(don->bitmap_inode);
+	
+	/*int i;
+	for (i = 0; i < 250; i++) {
+		don->bitmap_inode[i] = 0;
+		don->bitmap_data[i] = 0;
+	}*/
+	don->inode_size = sizeof(inode);
+	don->data_block_size =4096;
+	don->nodes = (void*)(don->bitmap_data) + (2 * sizeof(int));
+	don->data_blocks = don->nodes + num_pages * sizeof(inode);
+	
+	//TODO: Initialize root path
 }
 
 static int
